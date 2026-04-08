@@ -6,6 +6,12 @@ from pydantic import BaseModel, Field
 class ExplainRequest(BaseModel):
     fen: str = Field(..., description="FEN of the position before the move")
     move: str = Field(..., description="Move in UCI notation (e.g. e2e4)")
+    max_words: Optional[int] = Field(
+        default=None,
+        ge=4,
+        le=40,
+        description="Optional cap on explanation length in words",
+    )
 
 
 class EngineEvalOut(BaseModel):

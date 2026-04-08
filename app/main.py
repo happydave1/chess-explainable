@@ -39,7 +39,7 @@ async def explain(body: ExplainRequest, request: Request) -> ExplainResponse:
         ev = await analyze_move(engine, body.fen, body.move)
     except HTTPException:
         raise
-    text = await explain_with_slm(body.fen, ev)
+    text = await explain_with_slm(body.fen, ev, max_words=body.max_words)
     return ExplainResponse(legal=True, engine=ev, explanation=text)
 
 
