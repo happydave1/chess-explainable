@@ -1,0 +1,58 @@
+# --- Opening positions -------------------------------------------------------
+
+# Start: first move (king pawn)
+curl -s -X POST http://localhost:8000/explain \
+  -H "Content-Type: application/json" \
+  -d '{"fen":"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1","move":"e2e4"}' | jq .
+
+# Italian Game: 1.e4 e5 2.Nf3 Nc6 3.Bc4 Bc5 — White prepares the c2–c3 advance
+curl -s -X POST http://localhost:8000/explain \
+  -H "Content-Type: application/json" \
+  -d '{"fen":"r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4","move":"c2c3"}' | jq .
+
+# Sicilian Defense, Najdorf: 1.e4 c5 2.Nf3 d6 3.d4 cxd4 4.Nxd4 Nf6 5.Nc3 a6 — quiet development
+curl -s -X POST http://localhost:8000/explain \
+  -H "Content-Type: application/json" \
+  -d '{"fen":"rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6","move":"f1e2"}' | jq .
+
+# --- Middlegame (tactics / sharp play) ---------------------------------------
+
+# Italian: solid build-up (opening → middlegame)
+curl -s -X POST http://localhost:8000/explain \
+  -H "Content-Type: application/json" \
+  -d '{"fen":"r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4","move":"d2d3"}' | jq .
+
+# Tactical: Fried Liver–style attack — White delivers Qf7+ with Black king on e6
+# Line: 1.e4 e5 2.Nf3 Nc6 3.Bc4 Nf6 4.Ng5 d5 5.exd5 Nxd5 6.Nxf7 Kxf7 7.Qf3+ Ke6 8.Qf7+
+curl -s -X POST http://localhost:8000/explain \
+  -H "Content-Type: application/json" \
+  -d '{"fen":"r1bq1b1r/ppp3pp/2n1k3/3np3/2B5/5Q2/PPPP1PPP/RNB1K2R w KQ - 2 8","move":"f3f7"}' | jq .
+
+# Piece activity: bishop reroutes toward the center
+curl -s -X POST http://localhost:8000/explain \
+  -H "Content-Type: application/json" \
+  -d '{"fen":"3r2k1/ppp2ppp/8/3n4/8/8/PPPP1PPP/RNB1KB1R w KQ - 0 1","move":"f1c4"}' | jq .
+
+# --- Endgames ----------------------------------------------------------------
+
+# Mate: back rank — Qd8#
+curl -s -X POST http://localhost:8000/explain \
+  -H "Content-Type: application/json" \
+  -d '{"fen":"6k1/5ppp/8/3Q4/8/8/PPP2PPP/6K1 w - - 0 1","move":"d5d8"}' | jq .
+
+# King and pawn: central advance (opposition / race ideas)
+curl -s -X POST http://localhost:8000/explain \
+  -H "Content-Type: application/json" \
+  -d '{"fen":"8/8/8/4k3/8/8/4P3/4K3 w - - 0 1","move":"e2e4"}' | jq .
+
+# --- Illegal / error cases (expect 400) --------------------------------------
+
+# Illegal: no pawn on e2 in this position
+curl -s -X POST http://localhost:8000/explain \
+  -H "Content-Type: application/json" \
+  -d '{"fen":"r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3","move":"e2e4"}' | jq .
+
+# Illegal: blocked diagonal — Bf1 cannot reach c4 here
+curl -s -X POST http://localhost:8000/explain \
+  -H "Content-Type: application/json" \
+  -d '{"fen":"r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3","move":"f1c4"}' | jq .
