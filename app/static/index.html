@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Explain PGN</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" />
+  <style>
+    #board { width: min(92vw, 440px); margin: 0.5rem 0; }
+  </style>
+</head>
+<body>
+  <h1>Explain game (PGN)</h1>
+  <p>Paste a PGN below. The mainline is explained move-by-move (may take a while).</p>
+  <textarea id="pgn" rows="14" cols="80" placeholder='[Event "?"]&#10;&#10;1. e4 e5 2. Nf3 Nc6 *'></textarea>
+  <div style="margin: 0.5rem 0;">
+    <button id="go" type="button">Explain all moves</button>
+    <span id="status"></span>
+  </div>
+  <div id="err" style="color: crimson; white-space: pre-wrap;"></div>
+
+  <div id="viewer" style="display: none; margin-top: 1rem;">
+    <h2>Board</h2>
+    <p id="move-label"></p>
+    <div id="board"></div>
+    <div style="margin: 0.5rem 0;">
+      <button id="btn-prev" type="button">Previous</button>
+      <button id="btn-next" type="button">Next</button>
+      <span id="step-indicator"></span>
+    </div>
+    <p><strong>Explanation for this position</strong></p>
+    <p id="explanation" style="max-width: 50rem;"></p>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+  <script>
+    (function () {
+      var PIECE_THEME =
+        "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png";
+
+      function byId(id) {
+        return document.getElementById(id);
+      }
+
+      function applyUci(game, uci) {
+        var from = uci.substring(0, 2);
+        var to = uci.substring(2, 4);
+        var o = { from: from, to: to };
+        if (uci.length > 4) o.promotion = uci.substring(4, 5);
+        return game.move(o);
+      }
+
+      function buildFens(moves) {
+        var game = new Chess(moves[0].fen_before);
+        var fens = [game.fen()];
+        for (var i = 0; i < moves.length; i++) {
+          if (!applyUci(game, moves[i].uci)) {
+            throw new Error("Could not replay move " + (i + 1) + " (" + moves[i].uci + ")");
+          }
+          fens.push(game.fen());
+        }
+        return fens;
+      }
+
+      var boardInstance = null;
+      var state = { step: 0, fens: [], moves: [] };
+
+      function destroyBoard() {
+        if (boardInstance) {
+          boardInstance.destroy();
+          boardInstance = null;
+        }
+        var elBoard = byId("board");
+        if (elBoard) elBoard.innerHTML = "";
+      }
+
+      function renderStep() {
+        if (!state.fens.length) return;
+        var step = state.step;
+        boardInstance.position(state.fens[step], false);
+
+        if (step === 0) {
+          byId("move-label").textContent = "Start — before any move.";
+          byId("explanation").textContent =
+            "Use “Next” to step through the game. At each step the board shows the position after that half-move; the text is the explanation for the move just played.";
+        } else {
+          var mv = state.moves[step - 1];
+          byId("move-label").textContent =
+            "After " + mv.san + " (ply " + mv.ply + ", half-move " + step + ").";
+          byId("explanation").textContent = mv.explanation || "";
+        }
+
+        byId("step-indicator").textContent = "Step " + (step + 1) + " / " + state.fens.length;
+        byId("btn-prev").disabled = step <= 0;
+        byId("btn-next").disabled = step >= state.fens.length - 1;
+      }
+
+      function onPrev() {
+        if (state.step > 0) {
+          state.step--;
+          renderStep();
+        }
+      }
+
+      function onNext() {
+        if (state.step < state.fens.length - 1) {
+          state.step++;
+          renderStep();
+        }
+      }
+
+      byId("btn-prev").addEventListener("click", onPrev);
+      byId("btn-next").addEventListener("click", onNext);
+
+      document.addEventListener("keydown", function (e) {
+        if (byId("viewer").style.display === "none") return;
+        if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          onPrev();
+        } else if (e.key === "ArrowRight") {
+          e.preventDefault();
+          onNext();
+        }
+      });
+
+      byId("go").addEventListener("click", function () {
+        var pgn = byId("pgn").value;
+        byId("err").textContent = "";
+        byId("status").textContent = "Loading…";
+        byId("viewer").style.display = "none";
+        destroyBoard();
+
+        fetch("/explain-game", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pgn: pgn }),
+        })
+          .then(function (r) {
+            return r.json().then(function (data) {
+              return { ok: r.ok, status: r.status, data: data };
+            });
+          })
+          .then(function (res) {
+            if (!res.ok) {
+              var detail =
+                res.data && res.data.detail != null ? String(res.data.detail) : "Request failed";
+              byId("err").textContent = detail || "Request failed";
+              byId("status").textContent = "";
+              return;
+            }
+
+            var moves = res.data.moves || [];
+            byId("status").textContent = moves.length
+              ? "Done (" + moves.length + " moves). Use the board below."
+              : "No moves in mainline.";
+
+            if (!moves.length) {
+              return;
+            }
+
+            try {
+              state.moves = moves;
+              state.fens = buildFens(moves);
+            } catch (err) {
+              byId("err").textContent = String(err);
+              byId("status").textContent = "";
+              return;
+            }
+
+            state.step = 0;
+            destroyBoard();
+            byId("viewer").style.display = "block";
+            boardInstance = Chessboard("board", {
+              position: state.fens[0],
+              draggable: false,
+              pieceTheme: PIECE_THEME,
+            });
+            if (typeof boardInstance.resize === "function") {
+              boardInstance.resize();
+            }
+            renderStep();
+          })
+          .catch(function (e) {
+            byId("err").textContent = String(e);
+            byId("status").textContent = "";
+          });
+      });
+    })();
+  </script>
+</body>
+</html>
