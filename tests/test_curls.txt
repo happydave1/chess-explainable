@@ -23,11 +23,10 @@ curl -s -X POST http://localhost:8000/explain \
   -H "Content-Type: application/json" \
   -d '{"fen":"r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4","move":"d2d3","max_words":12}' | jq .
 
-# Tactical: Fried Liver–style attack — White delivers Qf7+ with Black king on e6
-# Line: 1.e4 e5 2.Nf3 Nc6 3.Bc4 Nf6 4.Ng5 d5 5.exd5 Nxd5 6.Nxf7 Kxf7 7.Qf3+ Ke6 8.Qf7+
+# Tactical: Fried Liver–style attack — White puts pressure on the pinned piece (PP on the PP)
 curl -s -X POST http://localhost:8000/explain \
   -H "Content-Type: application/json" \
-  -d '{"fen":"r1bq1b1r/ppp3pp/2n1k3/3np3/2B5/5Q2/PPPP1PPP/RNB1K2R w KQ - 2 8","move":"f3f7","max_words":12}' | jq .
+  -d '{"fen":"r1bq1b1r/ppp3pp/2n1k3/3np3/2B5/5Q2/PPPP1PPP/RNB1K2R w KQ - 2 8","move":"b1c3","max_words":12}' | jq .
 
 # Piece activity: bishop reroutes toward the center
 curl -s -X POST http://localhost:8000/explain \
